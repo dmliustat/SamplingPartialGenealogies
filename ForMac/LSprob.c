@@ -14,7 +14,7 @@ extern double SEQLEN;
 extern double P[2][2];
 extern double THETA;
 //extern long *mut_no, *rec_no; /*number of mutations or recombinations at each locus*/
-extern double *stopTime; /*Store the stopping time for each locus, should be <= tau*/
+//extern double *stopTime; /*Store the stopping time for each locus, should be <= tau*/
 extern double NumLineage; /*The number of lineages to stop*/
 extern double *positions;
 //extern double empirical[2];
@@ -24,11 +24,11 @@ extern double adj_rate;
 extern double gamma2[2][NODE_MAX];
 
 
-int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const double THETA, double* logw, tsk_table_collection_t* tables, long* num_nodes, long* num_rec, long* num_mut, long* num_coal); /*success: return 0; otherwise, return 1*/
+int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const double THETA, double* logw, tsk_table_collection_t* tables, long* num_nodes, long* num_rec, long* num_mut, long* num_coal, long* num_nonrec); /*success: return 0; otherwise, return 1*/
 
 double CSDapprx(long *TYPE, long k, long *newseq, long nbranch, long ntype, long *nanc, const double RHO); /*calculate pi(alpha | H-alpha)*/
 
-void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA, long k, long* ntype, long* nbranch, long* nanc, double* m, double* logw, tsk_table_collection_t* tables, int *rec_num, int *mut_num, int *coal_num);
+void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA, long k, long* ntype, long* nbranch, long* nanc, double* m, double* logw, tsk_table_collection_t* tables, int *rec_num, int *mut_num, int *coal_num, int* nonrecc);
 
 double rexp(double rate);
 
@@ -37,7 +37,7 @@ double CSDapprx_scaling(long* TYPE, long k, long* newseq, long nbranch, long nty
 
 
 
-int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const double THETA, double* logw, tsk_table_collection_t* tables, long* num_nodes, long* num_rec, long* num_mut, long* num_coal) {
+int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const double THETA, double* logw, tsk_table_collection_t* tables, long* num_nodes, long* num_rec, long* num_mut, long* num_coal, long* num_nonrec) {
     long *nanc, nbranch = M, *newseq; /*nanc: number of individuals ancestral at each locus */
     long *nanc_copy, *TYPE_tmp, ntype_copy; 
     long i, j, t, min, max, s1, s2;
@@ -64,6 +64,7 @@ int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const doub
 	*num_rec = 0;
 	*num_mut = 0;
 	*num_coal = 0;
+	*num_nonrec = 0;
 
     *seed_copy = *seed;
     *(seed_copy+1) = *(seed+1);
@@ -121,7 +122,7 @@ int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const doub
         }
         else{
 			/*Given the chosen chromosome i, select the genetic event. Update configuration and logw*/
-			FDupdate(TYPE, type2node, RHO, THETA, i, ntype, &nbranch, nanc, m, logw, tables, num_rec, num_mut, num_coal);
+			FDupdate(TYPE, type2node, RHO, THETA, i, ntype, &nbranch, nanc, m, logw, tables, num_rec, num_mut, num_coal, num_nonrec);
 		}
 
         /*check nbranch and ntype*/
@@ -144,7 +145,7 @@ int Build(long* TYPE, long* type2node, long* ntype, const double RHO, const doub
         }
     }
 	*num_nodes = nbranch;
-	fprintf(stderr, "num of nodes = %ld, recombinations = %ld; mutations = %ld; coalescence = %ld\n", nbranch, *num_rec, *num_mut, *num_coal);
+	fprintf(stderr, "num of nodes = %ld, recombinations = %ld; mutations = %ld; non-recurrent = %ld; coalescence = %ld\n", nbranch, *num_rec, *num_mut, *num_nonrec, *num_coal);
 
 
     /*calculate p(N_tau) and p(H_tau | N_tau); N_tau = nbranch*/
@@ -246,7 +247,7 @@ double CSDapprx(long *TYPE, long k, long *newseq, long nbranch, long ntype, long
 
     /*set up index-loci ancestral in new*/
     for(i=0; i<L; i++){
-        if(*(newseq +i) >= 0){
+        if(*(newseq +i) == 0 || *(newseq + i) == 1){
             *(index + index_len) = i;
             index_len++;
         }
@@ -312,7 +313,7 @@ double CSDapprx(long *TYPE, long k, long *newseq, long nbranch, long ntype, long
     /*calculate alpha_1(x), for x = 1,...,k. alpha is of length ntype */
 	newalpha = dou_vec_init(ntype);
     d = newseq[index[0]];
-	if (*(nanc_copy + index[0]) > NODE_MAX) a = NODE_MAX - 1;
+	if (*(nanc_copy + index[0]) >= NODE_MAX) a = NODE_MAX - 1;
 	else a = *(nanc_copy + index[0]);
     for(i=0; i<ntype; i++){
 		if (*(TYPE + i * (L + 1) + L) > 0) {
@@ -359,10 +360,11 @@ double CSDapprx(long *TYPE, long k, long *newseq, long nbranch, long ntype, long
     for(j = 1; j < index_len; j++){
         /*calculate recombination rate, p_j, in (A5) */
         pj = exp(-1.0 * (positions[*(index+j)] - positions[index[j-1]]) * adj_rate * RHO / (double)nbranch);
-		if (*(nanc_copy + index[j]) > NODE_MAX) a = NODE_MAX - 1;
+		if (*(nanc_copy + index[j]) >= NODE_MAX) a = NODE_MAX - 1;
 		else a = *(nanc_copy + index[j]);
 
         d = newseq[index[j]];
+				if (d != 0 && d != 1) fprintf(stderr, "newseq error! \n");
         for(i = 0; i < ntype; i++){
 			if (*(TYPE + i * (L + 1) + L) > 0) {
 				e = *(TYPE + i * (L + 1) + index[j]);
@@ -422,7 +424,7 @@ double CSDapprx(long *TYPE, long k, long *newseq, long nbranch, long ntype, long
 
 
 
-void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA, long k, long* ntype, long* nbranch, long* nanc, double* m, double* logw, tsk_table_collection_t* tables, int *rec_num, int *mut_num, int* coal_num)
+void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA, long k, long* ntype, long* nbranch, long* nanc, double* m, double* logw, tsk_table_collection_t* tables, int *rec_num, int *mut_num, int* coal_num, int* nonrec)
 {
     double tot, probtemp, probtemp2, *prob, *lweights, u, p_common; /*p_common=p(alpha | H-alpha) */
     long i, j, a, e, *newseq, *old, *rec1, *rec2, min, max, *TYPE_st;
@@ -579,7 +581,7 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
         /*a coalescence of two identical haplotypes*/
 		/*have to decide if there is more than one type k*/
         else {
-            prob[K*L+L-1+i] = *(TYPE + (L + 1) * i + L)-1;
+            prob[K*L+L-1+i] = *(TYPE + (L + 1) * i + L)-1.0;
             lweights[K*L+L-1+i] = log(p_common) + log((*(TYPE+(L+1)*i+L)==1) ? 0: 1);
         }
     }
@@ -628,6 +630,7 @@ void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA,
         /*calculate new type*/
         for(j=0; j<L; j++) newseq[j]=*(TYPE + (L + 1) * k + j);
 		if (*(TYPE + (L + 1) * k + i) != a) {
+			*nonrec += 1;
 			newseq[i] = a;
 			remove_old(TYPE, type2node, ntype, k, onode, *nbranch);
 			*nbranch -= 1;
@@ -992,7 +995,7 @@ double CSDapprx_scaling(long* TYPE, long k, long* newseq, long nbranch, long nty
 
 	/*calculate alpha_1(x), for x = 1,...,k. alpha is of length ntype */
 	d = newseq[index[0]];
-	if (*(nanc_copy + index[0]) > NODE_MAX) a = NODE_MAX - 1;
+	if (*(nanc_copy + index[0]) >= NODE_MAX) a = NODE_MAX - 1;
 	else a = *(nanc_copy + index[0]);
 	for (i = 0; i < ntype; i++) {
 		if (*(TYPE + i * (L + 1) + L) > 0) {
@@ -1043,10 +1046,11 @@ double CSDapprx_scaling(long* TYPE, long k, long* newseq, long nbranch, long nty
 	for (j = 1; j < index_len; j++) {
 		/*calculate recombination rate, p_j, in (A5) */
 		pj = exp(-1.0 * (positions[*(index + j)] - positions[index[j - 1]]) * adj_rate * RHO / (double)nbranch);
-		if (*(nanc_copy + index[j]) > NODE_MAX) a = NODE_MAX - 1;
+		if (*(nanc_copy + index[j]) >= NODE_MAX) a = NODE_MAX - 1;
 		else a = *(nanc_copy + index[j]);
 
 		d = newseq[index[j]];
+		if (d != 0 && d != 1) fprintf(stderr, "newseq error!\n");
 		for (i = 0; i < ntype; i++) {
 			if (*(TYPE + i * (L + 1) + L) > 0) {
 				e = *(TYPE + i * (L + 1) + index[j]);

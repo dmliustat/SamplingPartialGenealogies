@@ -14,13 +14,13 @@ void input2(FILE *infile);
 
 /*Claim External Functions*/
 /*extern void exp_matrix(double **Q_out, double para); */ /*Q_out=exp{P*para}*/
-extern int Build(long *TYPE, long *type2node, long *ntype, const double RHO, const double THETA, double *logw, tsk_table_collection_t *tables, long *num_nodes, long *num_rec, long *num_mut, long *num_coal);
+extern int Build(long *TYPE, long *type2node, long *ntype, const double RHO, const double THETA, double *logw, tsk_table_collection_t *tables, long *num_nodes, long *num_rec, long *num_mut, long *num_coal, long* num_nonrec);
 
 extern double CSDapprx(long *TYPE, long k, long *newseq, long nbranch, long ntype, long *nanc, const double RHO); 
 
 extern double CSDapprx_scaling(long* TYPE, long k, long* newseq, long nbranch, long ntype, long* nanc, const double RHO);
 
-extern void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA, long k, long* ntype, long* nbranch, long* n, double* m, double* logw, tsk_table_collection_t* tables, int* rec_num, int* mut_num, int* coal_num);
+extern void FDupdate(long* TYPE, long* type2node, const double RHO, const double THETA, long k, long* ntype, long* nbranch, long* n, double* m, double* logw, tsk_table_collection_t* tables, int* rec_num, int* mut_num, int* coal_num, int* nonrecc);
 
 extern double rexp(double rate);
 
@@ -55,7 +55,7 @@ int main(int argc, char *argv[]){
 
     double logw, *wt, wt_sum=0.0, *logwt;
     long *TYPE, *type2node, *type2node_copy, ntype;
-    long *n_nodes, *n_rec, *n_mut, *n_coal, num_rec, num_mut, num_coal, num_nodes;
+    long *n_nodes, *n_rec, *n_mut, *n_nonrec, *n_coal, num_rec, num_mut, num_coal, num_nodes, num_nonrec;
     char filename[200];
 
     long i,j;
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]){
 
     
     if(argc>1) fopen_s(&in1, argv[1],"r");
-    else fopen_s(&in1, "C:\\Users\\blabl\\Desktop\\LinesOfDescents\\infile_case1","r");
+    else fopen_s(&in1, "C:\\Users\\blabl\\Desktop\\LinesOfDescents\\infile_control_21","r");
     
     input1(in1);
     fclose(in1);
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]){
     
     
     if(argc>2) fopen_s(&in2, argv[2],"r");
-    else fopen_s(&in2, "C:\\Users\\blabl\\Desktop\\LinesOfDescents\\infile_case2","r");
+    else fopen_s(&in2, "C:\\Users\\blabl\\Desktop\\LinesOfDescents\\infile_control_22","r");
     
     input2(in2);
     fclose(in2);
@@ -97,6 +97,7 @@ int main(int argc, char *argv[]){
 	n_nodes = long_vec_init(NRUN);
 	n_rec = long_vec_init(NRUN);
 	n_mut = long_vec_init(NRUN);
+    n_nonrec = long_vec_init(NRUN);
 	n_coal = long_vec_init(NRUN);
 	logwt = dou_vec_init(NRUN);
     ret = tsk_table_collection_init(&tables, 0);
@@ -142,7 +143,7 @@ int main(int argc, char *argv[]){
         for(j=0; j<M; j++) *(type2node+j) = *(type2node_copy+j);
         for(j=M; j<NODE_MAX; j++) *(type2node+j) = -1;
 
-        flag = Build(TYPE, type2node, &ntype, RHO, THETA, &logw, &tables, &num_nodes, &num_rec, &num_mut, &num_coal);
+        flag = Build(TYPE, type2node, &ntype, RHO, THETA, &logw, &tables, &num_nodes, &num_rec, &num_mut, &num_coal, &num_nonrec);
 		
         if(flag==0){
             /*.trees output */
@@ -169,6 +170,7 @@ int main(int argc, char *argv[]){
 			n_nodes[i] = num_nodes;
 			n_rec[i] = num_rec;
 			n_mut[i] = num_mut;
+            n_nonrec[i] = num_nonrec;
 			n_coal[i] = num_coal;
 			
 			fprintf(stderr, "Building ARG succeeds.\n");
@@ -213,9 +215,9 @@ int main(int argc, char *argv[]){
         fopen_s(&out, filename, "w");
     }
     if(out){
-		fprintf(out, "run \t normalized weight \t log(weight) \t num_nodes \t num_recombinations \t num_mutations \t num_coalescence \n");
+		fprintf(out, "run \t normalized weight \t log(weight) \t num_nodes \t num_recombinations \t num_mutations \t num_nonrecurrent \t num_coalescence \n");
 		for (i = 0; i < NRUN; i++) {
-			fprintf(out, "%ld \t %lf \t %lf \t %ld \t %ld \t %ld \t %ld\n", i + 1, wt[i], logwt[i], n_nodes[i], n_rec[i], n_mut[i], n_coal[i]);
+			fprintf(out, "%ld \t %lf \t %lf \t %ld \t %ld \t %ld \t %ld\n", i + 1, wt[i], logwt[i], n_nodes[i], n_rec[i], n_mut[i], n_nonrec[i], n_coal[i]);
 		}
 		
 		fclose(out);
@@ -234,12 +236,24 @@ int main(int argc, char *argv[]){
     
     /*free the variables*/
     ret = tsk_table_collection_free(&tables);
+    ret = tsk_table_collection_free(&tables_copy);
     free(TYPE);
     free(TYPE_copy);
     free(type2node);
     free(type2node_copy);
     free(wt);
+    free(logwt);
     free(positions);
+    for (i = 0; i < 2; i++) free(P[i]);
+    free(P);
+    for (i = 0; i < 2; i++) free(gamma2[i]);
+    free(gamma2);
+
+    free(n_nodes);
+    free(n_rec);
+    free(n_mut);
+    free(n_nonrec);
+    free(n_coal);
     
     return(0);
 
