@@ -65,7 +65,7 @@ int main(int argc, char *argv[]){
 
     
     if(argc>1) fopen_s(&in1, argv[1],"r");
-    else fopen_s(&in1, "C:\\Users\\blabl\\Desktop\\LinesOfDescents\\infile_control_21","r");
+    else fopen_s(&in1, "C:\\Users\\blabl\\Desktop\\LinesOfDescents\\infile_com1","r");
     
     input1(in1);
     fclose(in1);
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]){
     
     
     if(argc>2) fopen_s(&in2, argv[2],"r");
-    else fopen_s(&in2, "C:\\Users\\blabl\\Desktop\\LinesOfDescents\\infile_control_22","r");
+    else fopen_s(&in2, "C:\\Users\\blabl\\Desktop\\LinesOfDescents\\infile_com2","r");
     
     input2(in2);
     fclose(in2);
@@ -244,10 +244,6 @@ int main(int argc, char *argv[]){
     free(wt);
     free(logwt);
     free(positions);
-    for (i = 0; i < 2; i++) free(P[i]);
-    free(P);
-    for (i = 0; i < 2; i++) free(gamma2[i]);
-    free(gamma2);
 
     free(n_nodes);
     free(n_rec);

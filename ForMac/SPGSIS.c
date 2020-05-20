@@ -242,10 +242,6 @@ int main(int argc, char *argv[]){
     free(wt);
     free(logwt);
     free(positions);
-    for (i = 0; i < 2; i++) free(P[i]);
-    free(P);
-    for (i = 0; i < 2; i++) free(gamma2[i]);
-    free(gamma2);
 
     free(n_nodes);
     free(n_rec);
