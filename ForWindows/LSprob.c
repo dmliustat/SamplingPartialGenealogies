@@ -351,7 +351,7 @@ double CSDapprx(long *TYPE, long k, long *newseq, long nbranch, long ntype, long
     }
     alpha_sum = 0.0;
 	for (i = 0; i < ntype; i++) {
-		if (*(TYPE + i * (L + 1) + L) > 0) {
+		if (*(TYPE + i * (L + 1) + L) >= 0) {
 			alpha_sum += *(TYPE + (L + 1) * i + L) * alpha[i];
 		}
 	}
@@ -402,7 +402,7 @@ double CSDapprx(long *TYPE, long k, long *newseq, long nbranch, long ntype, long
         }
         alpha_sum = 0.0;
 		for (i = 0; i < ntype; i++) {
-			if (*(TYPE + i * (L + 1) + L) > 0) {
+			if (*(TYPE + i * (L + 1) + L) >= 0) {
 				alpha_sum += *(TYPE + (L + 1) * i + L) * newalpha[i];
 				alpha[i] = newalpha[i];
 			}

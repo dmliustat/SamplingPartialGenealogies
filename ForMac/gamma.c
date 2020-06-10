@@ -31,7 +31,7 @@ void gammaMat2(double gamma2[2][NODE_MAX], double THETA)
 
 	for (i = 0; i < NODE_MAX; i++) {
 		gamma2[0][i] = (double)i / ((double)i + THETA) + Mu * THETA / ((double)i + THETA);
-		gamma2[1][i] = (double)i / ((double)i + THETA) + (1-Mu) * THETA / ((double)i + THETA);
+		gamma2[1][i] = (double)i / ((double)i + THETA) + (1.0-Mu) * THETA / ((double)i + THETA);
 	}
 }
 

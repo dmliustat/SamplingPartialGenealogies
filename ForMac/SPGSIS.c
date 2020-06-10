@@ -215,7 +215,7 @@ int main(int argc, char *argv[]){
     if(out){
 		fprintf(out, "run \t normalized weight \t log(weight) \t num_nodes \t num_recombinations \t num_mutations \t num_nonrecurrent \t num_coalescence \n");
 		for (i = 0; i < NRUN; i++) {
-			fprintf(out, "%ld \t %lf \t %lf \t %ld \t %ld \t %ld \t %ld\n", i + 1, wt[i], logwt[i], n_nodes[i], n_rec[i], n_mut[i], n_nonrec[i], n_coal[i]);
+			fprintf(out, "%ld \t %lf \t %lf \t %ld \t %ld \t %ld \t %ld \t %ld\n", i + 1, wt[i], logwt[i], n_nodes[i], n_rec[i], n_mut[i], n_nonrec[i], n_coal[i]);
 		}
 		
 		fclose(out);
